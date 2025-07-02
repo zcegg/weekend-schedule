@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>周末值班排班系统</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #f5f6fa;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #e5e6eb;
+            box-sizing: border-box;
+            padding: 32px 24px 24px 24px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .header h1 {
+            font-size: 2em;
+            color: #222;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .header p {
+            color: #888;
+            font-size: 1em;
+        }
+        .employee-input {
+            margin-bottom: 20px;
+        }
+        .employee-input h3 {
+            color: #333;
+            font-size: 1.1em;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        .employee-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .employee-item {
+            display: flex;
+            align-items: center;
+            background: #f5f6fa;
+            border: 1px solid #e5e6eb;
+            border-radius: 5px;
+            padding: 6px 10px;
+            min-width: 160px;
+        }
+        .employee-avatar {
+            font-size: 1.5em;
+            margin-right: 8px;
+        }
+        .employee-name-label {
+            font-size: 1em;
+            color: #222;
+        }
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            background: #3370ff;
+            color: #fff;
+            border: none;
+            padding: 8px 20px;
+            font-size: 1em;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:hover:not(:disabled) {
+            background: #2251b8;
+        }
+        .btn:disabled {
+            background: #bfc8da;
+            cursor: not-allowed;
+        }
+        .schedule-container {
+            margin-top: 24px;
+        }
+        .week-schedule {
+            margin-bottom: 24px;
+            border: 1px solid #e5e6eb;
+            border-radius: 6px;
+            background: #fafbfc;
+        }
+        .week-header {
+            background: #f0f3fa;
+            color: #3370ff;
+            padding: 10px 0;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: 500;
+            border-bottom: 1px solid #e5e6eb;
+        }
+        .schedule-grid {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .day-schedule {
+            flex: 1 1 50%;
+            min-width: 180px;
+            padding: 16px 8px;
+            border-right: 1px solid #e5e6eb;
+            border-bottom: 1px solid #e5e6eb;
+            background: #fff;
+        }
+        .day-schedule:nth-child(2n) {
+            border-right: none;
+        }
+        .day-title {
+            font-size: 1em;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        .period-slot {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .period-title {
+            color: #888;
+            font-size: 0.95em;
+            min-width: 36px;
+        }
+        .employee-avatar-display {
+            font-size: 1.2em;
+        }
+        .employee-name-display {
+            color: #222;
+            font-size: 1em;
+            font-weight: 500;
+        }
+        .status-message {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            background: #e8f4fd;
+            color: #0066cc;
+            font-size: 0.9em;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px 2px;
+            }
+            .schedule-grid {
+                flex-direction: column;
+            }
+            .day-schedule {
+                border-right: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>周末值班排班系统</h1>
+            <p>自动生成两周周末值班表（8人分两周，每人一次）</p>
+        </div>
+        <div class="employee-input">
+            <h3>员工名单</h3>
+            <div class="employee-list" id="employeeList"></div>
+            <div class="controls">
+                <button class="btn" onclick="generateSchedule()" id="generateBtn">开始排班</button>
+                <button class="btn" onclick="exportSchedule()" id="exportBtn" style="display: none;">导出排班表</button>
+            </div>
+            <div class="status-message" id="statusMessage" style="display: none;"></div>
+        </div>
+        <div class="schedule-container" id="scheduleContainer"></div>
+    </div>
+    <script>
+        // 固定员工名单
+        const employees = [
+            { id: 1, name: '张恒', avatar: '👨' },
+            { id: 2, name: '齐海华', avatar: '👨‍🦱' },
+            { id: 3, name: '庄彬彬', avatar: '🧑' },
+            { id: 4, name: '石玉月', avatar: '👩' },
+            { id: 5, name: '徐烁', avatar: '🧑‍🦰' },
+            { id: 6, name: '刘桂银', avatar: '👩‍🦰' },
+            { id: 7, name: '姜逸康', avatar: '👨‍🦳' },
+            { id: 8, name: '李若琛', avatar: '👩‍🦳' }
+        ];
+        let currentSchedule = [];
+        let hasGenerated = false; // 标记是否已经生成过排班表
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            renderEmployeeList();
+            checkScheduleStatus();
+        });
+        
+        // 检查排班状态
+        function checkScheduleStatus() {
+            const scheduleData = sessionStorage.getItem('scheduleGenerated');
+            if (scheduleData) {
+                // 如果已经生成过排班表，恢复状态
+                hasGenerated = true;
+                currentSchedule = JSON.parse(scheduleData);
+                
+                // 禁用排班按钮
+                const generateBtn = document.getElementById('generateBtn');
+                generateBtn.disabled = true;
+                generateBtn.textContent = '已完成排班';
+                
+                // 显示状态消息
+                const statusMessage = document.getElementById('statusMessage');
+                statusMessage.textContent = '排班已完成！';
+                statusMessage.style.display = 'block';
+                
+                // 显示导出按钮和排班表
+                document.getElementById('exportBtn').style.display = 'inline-block';
+                renderSchedule();
+            }
+        }
+        
+        function renderEmployeeList() {
+            const employeeList = document.getElementById('employeeList');
+            employeeList.innerHTML = '';
+            employees.forEach((employee) => {
+                const employeeItem = document.createElement('div');
+                employeeItem.className = 'employee-item';
+                employeeItem.innerHTML = `
+                    <span class="employee-avatar">${employee.avatar}</span>
+                    <span class="employee-name-label">${employee.name}</span>
+                `;
+                employeeList.appendChild(employeeItem);
+            });
+        }
+        
+        function generateSchedule() {
+            if (hasGenerated) {
+                return; // 如果已经生成过，直接返回
+            }
+            
+            currentSchedule = generateScheduleData();
+            renderSchedule();
+            
+            // 禁用排班按钮
+            const generateBtn = document.getElementById('generateBtn');
+            generateBtn.disabled = true;
+            generateBtn.textContent = '已完成排班';
+            
+            // 显示状态消息
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.textContent = '排班已完成！';
+            statusMessage.style.display = 'block';
+            
+            // 显示导出按钮
+            document.getElementById('exportBtn').style.display = 'inline-block';
+            
+            // 标记已生成并保存到 sessionStorage
+            hasGenerated = true;
+            sessionStorage.setItem('scheduleGenerated', JSON.stringify(currentSchedule));
+        }
+        
+        function generateScheduleData() {
+            // 打乱员工顺序
+            const shuffledEmployees = [...employees].sort(() => Math.random() - 0.5);
+            
+            const schedules = [];
+            const weekendDays = ['周六', '周日'];
+            const periods = ['上午', '下午'];
+            
+            // 第一周：前4个员工
+            const week1Schedule = { week: 1, slots: [] };
+            let employeeIndex = 0;
+            
+            weekendDays.forEach(day => {
+                periods.forEach(period => {
+                    week1Schedule.slots.push({
+                        date: day,
+                        period,
+                        employee: shuffledEmployees[employeeIndex]
+                    });
+                    employeeIndex++;
+                });
+            });
+            schedules.push(week1Schedule);
+            
+            // 第二周：后4个员工
+            const week2Schedule = { week: 2, slots: [] };
+            
+            weekendDays.forEach(day => {
+                periods.forEach(period => {
+                    week2Schedule.slots.push({
+                        date: day,
+                        period,
+                        employee: shuffledEmployees[employeeIndex]
+                    });
+                    employeeIndex++;
+                });
+            });
+            schedules.push(week2Schedule);
+            
+            return schedules;
+        }
+        
+        function renderSchedule() {
+            const scheduleContainer = document.getElementById('scheduleContainer');
+            scheduleContainer.innerHTML = '';
+            currentSchedule.forEach(weekSchedule => {
+                const weekDiv = document.createElement('div');
+                weekDiv.className = 'week-schedule';
+                weekDiv.innerHTML = `
+                    <div class="week-header">第${weekSchedule.week}周排班表</div>
+                    <div class="schedule-grid">
+                        ${weekSchedule.slots.map(slot => `
+                            <div class="day-schedule">
+                                <div class="day-title">${slot.date}</div>
+                                <div class="period-slot">
+                                    <span class="period-title">${slot.period}</span>
+                                    <span class="employee-avatar-display">${slot.employee.avatar}</span>
+                                    <span class="employee-name-display">${slot.employee.name}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                scheduleContainer.appendChild(weekDiv);
+            });
+        }
+        
+        function exportSchedule() {
+            if (currentSchedule.length === 0) {
+                alert('请先生成排班表！');
+                return;
+            }
+            let csvContent = 'data:text/csv;charset=utf-8,';
+            csvContent += '周次,日期,时段,值班人员\n';
+            currentSchedule.forEach(weekSchedule => {
+                weekSchedule.slots.forEach(slot => {
+                    csvContent += `${weekSchedule.week},${slot.date},${slot.period},${slot.employee.name}\n`;
+                });
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `排班表_${new Date().toLocaleDateString()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html> 
