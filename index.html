@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CR统计分析工具</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        
+        .input-section {
+            margin-bottom: 30px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        
+        .button-group {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .results {
+            margin-top: 30px;
+        }
+        
+        .summary {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .summary h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        
+        .person-stats {
+            margin-top: 20px;
+        }
+        
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stats-table th,
+        .stats-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .stats-table th:nth-child(2),
+        .stats-table th:nth-child(3),
+        .stats-table th:nth-child(4),
+        .stats-table th:nth-child(5),
+        .stats-table th:nth-child(6),
+        .stats-table th:nth-child(7),
+        .stats-table td:nth-child(2),
+        .stats-table td:nth-child(3),
+        .stats-table td:nth-child(4),
+        .stats-table td:nth-child(5),
+        .stats-table td:nth-child(6),
+        .stats-table td:nth-child(7) {
+            text-align: center;
+        }
+        
+        .stats-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .stats-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .stats-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .person-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-detail {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+        
+        .btn-detail:hover {
+            background: #0056b3;
+        }
+        
+        .cr-item {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 12px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #ddd;
+        }
+       
+        .cr-item.passed {
+            border-left-color: #28a745;
+        }
+        
+        .cr-item.failed {
+            border-left-color: #dc3545;
+        }
+        
+        .cr-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .cr-url {
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+        }
+        
+        .cr-date {
+            font-size: 12px;
+            color: #888;
+            white-space: nowrap;
+        }
+        
+        .cr-status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        .cr-status.passed {
+            background: #28a745;
+            color: white;
+        }
+        
+        .cr-status.failed {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .cr-status.pending {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .cr-note {
+            font-size: 11px;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .rate-good {
+            color: #28a745;
+        }
+        
+        .rate-warning {
+            color: #ffc107;
+        }
+        
+        .rate-danger {
+            color: #dc3545;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .week-selector {
+            margin-bottom: 20px;
+        }
+        
+        select {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .debug-info h4 {
+            margin-top: 0;
+            color: #495057;
+        }
+        
+        .toggle-debug {
+            background: #6c757d;
+            font-size: 12px;
+            padding: 5px 10px;
+        }
+        
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .cr-list {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CR统计分析工具</h1>
+        
+        <div class="input-section">
+            <label for="crData">请粘贴CR数据：</label>
+            <textarea id="crData" placeholder="支持格式：
+URL + 姓名 + 日期 + 状态
+URL + 姓名/姓名/姓名 + 日期 + 状态
+支持多人协作、状态可选（通过/不通过）
+
+示例：
+http://cr.corp.tujia.com/D192059齐海华/徐烁/李若琛2025年6月30日不通过
+http://cr.corp.tujia.com/D190964姜逸康2025年6月30日不通过
+http://cr.corp.tujia.com/D190973刘桂银2025年7月1日通过"></textarea>
+        </div>
+        
+        <div class="button-group">
+            <button onclick="parseData()">解析数据</button>
+            <button onclick="clearData()">清空数据</button>
+            <button class="toggle-debug" onclick="toggleDebug()">显示调试信息</button>
+        </div>
+        
+        <div class="debug-info hidden" id="debugInfo">
+            <h4>数据处理日志</h4>
+            <div id="debugContent"></div>
+        </div>
+        
+        <div class="week-selector hidden" id="weekSelector">
+            <label for="weekSelect">选择统计周：</label>
+            <select id="weekSelect" onchange="updateWeekStats()">
+                <option value="">请选择周</option>
+            </select>
+        </div>
+        
+        <div class="results hidden" id="results">
+            <div class="summary" id="summary">
+                <h3>统计摘要</h3>
+                <div id="summaryContent"></div>
+            </div>
+            
+            <div class="person-stats" id="personStats">
+                <!-- 个人统计表格将在这里生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle">个人CR详情</span>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div id="modalContent">
+                <!-- 详情内容将在这里显示 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allCRData = [];
+        let currentWeekData = [];
+        let debugLogs = [];
+        let currentPersonStats = {};
+        
+        function log(message) {
+            debugLogs.push(message);
+            console.log(message);
+        }
+        
+        function parseData() {
+            const input = document.getElementById('crData').value.trim();
+            if (!input) {
+                alert('请输入CR数据');
+                return;
+            }
+            
+            debugLogs = [];
+            allCRData = [];
+            
+            log('开始解析数据...');
+            
+            const lines = input.split('\n').filter(line => line.trim() && !line.trim().startsWith('//'));
+            log(`共${lines.length}行数据需要处理`);
+            
+            const rawCRs = [];
+            
+            // 第一步：解析所有行
+            lines.forEach((line, index) => {
+                const parts = line.split('\t').map(part => part.trim()).filter(part => part);
+                if (parts.length >= 3) {
+                    const url = parts[0];
+                    const names = parts[1];
+                    const dateStr = parts[2];
+                    const status = parts.length > 3 ? parts[parts.length - 1] : '';
+                    
+                    // 跳过没有完整URL的行
+                    if (!url.startsWith('http')) {
+                        log(`跳过无效URL行: ${line}`);
+                        return;
+                    }
+                    
+                    // 解析日期
+                    const dateMatch = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+                    if (!dateMatch) {
+                        log(`跳过无效日期行: ${line}`);
+                        return;
+                    }
+                    
+                    const year = parseInt(dateMatch[1]);
+                    const month = parseInt(dateMatch[2]) - 1;
+                    const day = parseInt(dateMatch[3]);
+                    const date = new Date(year, month, day);
+                    
+                    // 解析状态
+                    let parsedStatus = 'pending';
+                    if (status.includes('通过') && !status.includes('不通过')) {
+                        parsedStatus = 'passed';
+                    } else if (status.includes('不通过')) {
+                        parsedStatus = 'failed';
+                    }
+                    
+                    // 处理多人协作
+                    const nameList = names.split('/').map(name => name.trim()).filter(name => name);
+                    
+                    nameList.forEach(name => {
+                        rawCRs.push({
+                            url,
+                            name,
+                            date,
+                            dateStr,
+                            status: parsedStatus,
+                            week: getWeekString(date),
+                            originalLine: line.trim()
+                        });
+                    });
+                    
+                    log(`解析行 ${index + 1}: ${nameList.length}个人员, 状态: ${parsedStatus}`);
+                }
+            });
+            
+            log(`原始解析结果: ${rawCRs.length}条记录`);
+            
+            // 第二步：去重处理 - 同一天同一个人的同一个URL只保留最后一次状态
+            const uniqueMap = new Map();
+            
+            rawCRs.forEach(cr => {
+                const key = `${cr.name}-${cr.url}-${cr.dateStr}`;
+                if (!uniqueMap.has(key)) {
+                    uniqueMap.set(key, cr);
+                    log(`新增记录: ${cr.name} - ${cr.dateStr} - ${cr.status}`);
+                } else {
+                    const existing = uniqueMap.get(key);
+                    // 如果状态不同，以最后出现的为准
+                    if (existing.status !== cr.status) {
+                        log(`更新状态: ${cr.name} - ${cr.dateStr} - ${existing.status} -> ${cr.status}`);
+                        uniqueMap.set(key, cr);
+                    } else {
+                        log(`跳过重复记录: ${cr.name} - ${cr.dateStr} - ${cr.status}`);
+                    }
+                }
+            });
+            
+            allCRData = Array.from(uniqueMap.values());
+            log(`去重后结果: ${allCRData.length}条记录`);
+            
+            // 第三步：按人员和日期统计
+            const personDayMap = new Map();
+            allCRData.forEach(cr => {
+                const key = `${cr.name}-${cr.dateStr}`;
+                if (!personDayMap.has(key)) {
+                    personDayMap.set(key, []);
+                }
+                personDayMap.get(key).push(cr);
+            });
+            
+            // 统计每人每天的提交情况
+            personDayMap.forEach((crs, key) => {
+                const [name, dateStr] = key.split('-');
+                const passedCount = crs.filter(cr => cr.status === 'passed').length;
+                const failedCount = crs.filter(cr => cr.status === 'failed').length;
+                const pendingCount = crs.filter(cr => cr.status === 'pending').length;
+                
+                log(`${name} - ${dateStr}: ${crs.length}个CR (通过:${passedCount}, 未通过:${failedCount}, 待审:${pendingCount})`);
+            });
+            
+            if (allCRData.length === 0) {
+                alert('没有解析到有效的CR数据，请检查数据格式');
+                return;
+            }
+            
+            updateDebugInfo();
+            populateWeekSelector();
+            showResults();
+        }
+        
+        function getWeekString(date) {
+            const year = date.getFullYear();
+            const weekNumber = getWeekNumber(date);
+            return `${year}年第${weekNumber}周`;
+        }
+        
+        function getWeekNumber(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+        
+        function populateWeekSelector() {
+            const weeks = [...new Set(allCRData.map(cr => cr.week))].sort();
+            const select = document.getElementById('weekSelect');
+            select.innerHTML = '<option value="">请选择周</option>';
+            
+            weeks.forEach(week => {
+                const option = document.createElement('option');
+                option.value = week;
+                option.textContent = week;
+                select.appendChild(option);
+            });
+            
+            // 默认选择最新的周
+            if (weeks.length > 0) {
+                select.value = weeks[weeks.length - 1];
+                updateWeekStats();
+            }
+            
+            document.getElementById('weekSelector').classList.remove('hidden');
+        }
+        
+        function updateWeekStats() {
+            const selectedWeek = document.getElementById('weekSelect').value;
+            if (!selectedWeek) {
+                currentWeekData = [];
+                return;
+            }
+            
+            currentWeekData = allCRData.filter(cr => cr.week === selectedWeek);
+            displayStats();
+        }
+        
+        function displayStats() {
+            // 按人员和日期分组，每人每天只算一次提交
+            const personDayStats = new Map();
+            
+            currentWeekData.forEach(cr => {
+                const dayKey = `${cr.name}-${cr.dateStr}`;
+                if (!personDayStats.has(dayKey)) {
+                    personDayStats.set(dayKey, {
+                        name: cr.name,
+                        date: cr.date,
+                        dateStr: cr.dateStr,
+                        crs: [],
+                        finalStatus: 'pending'
+                    });
+                }
+                
+                const dayData = personDayStats.get(dayKey);
+                dayData.crs.push(cr);
+                
+                // 确定最终状态：如果有通过的就是通过，如果都是不通过就是不通过，否则是待审
+                const hasPass = dayData.crs.some(c => c.status === 'passed');
+                const hasFail = dayData.crs.some(c => c.status === 'failed');
+                const hasPending = dayData.crs.some(c => c.status === 'pending');
+                
+                if (hasPass) {
+                    dayData.finalStatus = 'passed';
+                } else if (hasFail) {
+                    dayData.finalStatus = 'failed';
+                } else if (hasPending) {
+                    dayData.finalStatus = 'pending';
+                }
+            });
+            
+            // 按人员统计
+            const personStats = {};
+            personDayStats.forEach((dayData, key) => {
+                const name = dayData.name;
+                if (!personStats[name]) {
+                    personStats[name] = {
+                        name,
+                        days: [],
+                        totalCount: 0,
+                        passedCount: 0,
+                        failedCount: 0,
+                        pendingCount: 0
+                    };
+                }
+                
+                personStats[name].days.push(dayData);
+                personStats[name].totalCount++;
+                
+                if (dayData.finalStatus === 'passed') {
+                    personStats[name].passedCount++;
+                } else if (dayData.finalStatus === 'failed') {
+                    personStats[name].failedCount++;
+                } else {
+                    personStats[name].pendingCount++;
+                }
+            });
+            
+            // 保存当前统计数据供弹窗使用
+            currentPersonStats = personStats;
+            
+            // 显示汇总信息
+            displaySummary(personStats);
+            
+            // 显示个人统计表格
+            displayPersonCards(personStats);
+        }
+        
+        function displaySummary(personStats) {
+            const totalPeople = Object.keys(personStats).length;
+            const totalSubmissions = Object.values(personStats).reduce((sum, person) => sum + person.totalCount, 0);
+            const totalPassed = Object.values(personStats).reduce((sum, person) => sum + person.passedCount, 0);
+            const totalFailed = Object.values(personStats).reduce((sum, person) => sum + person.failedCount, 0);
+            const totalPending = Object.values(personStats).reduce((sum, person) => sum + person.pendingCount, 0);
+            
+            const expectedTotal = totalPeople * 5; // 每人每周应提交5次
+            const submitRate = totalPeople > 0 ? (totalSubmissions / expectedTotal * 100).toFixed(1) : 0;
+            const passRate = totalPassed + totalFailed > 0 ? (totalPassed / (totalPassed + totalFailed) * 100).toFixed(1) : 0;
+            
+            const selectedWeek = document.getElementById('weekSelect').value;
+            
+            document.getElementById('summaryContent').innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div><strong>统计周期：</strong> ${selectedWeek}</div>
+                    <div><strong>参与人数：</strong> ${totalPeople}人</div>
+                    <div><strong>总提交天数：</strong> ${totalSubmissions}天</div>
+                    <div><strong>应提交天数：</strong> ${expectedTotal}天</div>
+                    <div><strong>提交率：</strong> <span class="${getSubmitRateClass(submitRate)}">${submitRate}%</span></div>
+                    <div><strong>通过率：</strong> <span class="${getPassRateClass(passRate)}">${passRate}%</span></div>
+                    <div><strong>已通过：</strong> ${totalPassed}天</div>
+                    <div><strong>未通过：</strong> ${totalFailed}天</div>
+                    <div><strong>待审核：</strong> ${totalPending}天</div>
+                </div>
+            `;
+        }
+        
+        function getSubmitRateClass(rate) {
+            if (rate >= 80) return 'rate-good';
+            if (rate >= 60) return 'rate-warning';
+            return 'rate-danger';
+        }
+        
+        function getPassRateClass(rate) {
+            if (rate >= 90) return 'rate-good';
+            if (rate >= 70) return 'rate-warning';
+            return 'rate-danger';
+        }
+        
+        function displayPersonCards(personStats) {
+            const container = document.getElementById('personStats');
+            
+            // 创建表格
+            const table = document.createElement('table');
+            table.className = 'stats-table';
+            
+            // 创建表头
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr>
+                    <th>姓名</th>
+                    <th>提交天数</th>
+                    <th>提交率</th>
+                    <th>通过率</th>
+                    <th>已通过</th>
+                    <th>未通过</th>
+                    <th>待审核</th>
+                    <th>操作</th>
+                </tr>
+            `;
+            
+            // 创建表体
+            const tbody = document.createElement('tbody');
+            
+            Object.values(personStats).forEach(person => {
+                const submitRate = (person.totalCount / 5 * 100).toFixed(1);
+                const passRate = person.passedCount + person.failedCount > 0 ? 
+                    (person.passedCount / (person.passedCount + person.failedCount) * 100).toFixed(1) : 0;
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="person-name">${person.name}</td>
+                    <td>${person.totalCount}/5</td>
+                    <td><span class="${getSubmitRateClass(submitRate)}">${submitRate}%</span></td>
+                    <td><span class="${getPassRateClass(passRate)}">${passRate}%</span></td>
+                    <td>${person.passedCount}天</td>
+                    <td>${person.failedCount}天</td>
+                    <td>${person.pendingCount}天</td>
+                    <td class="action-buttons">
+                        <button class="btn-detail" onclick="showPersonDetail('${person.name}')">查看详情</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            
+            container.innerHTML = '';
+            container.appendChild(table);
+        }
+        
+        function showPersonDetail(personName) {
+            const person = Object.values(currentPersonStats).find(p => p.name === personName);
+            if (!person) return;
+            
+            const modal = document.getElementById('detailModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+            
+            modalTitle.textContent = `${personName} - CR详情`;
+            
+            const submitRate = (person.totalCount / 5 * 100).toFixed(1);
+            const passRate = person.passedCount + person.failedCount > 0 ? 
+                (person.passedCount / (person.passedCount + person.failedCount) * 100).toFixed(1) : 0;
+            
+            modalContent.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+                    <div><strong>提交天数：</strong> ${person.totalCount}/5</div>
+                    <div><strong>提交率：</strong> <span class="${getSubmitRateClass(submitRate)}">${submitRate}%</span></div>
+                    <div><strong>通过率：</strong> <span class="${getPassRateClass(passRate)}">${passRate}%</span></div>
+                    <div><strong>已通过：</strong> ${person.passedCount}天</div>
+                    <div><strong>未通过：</strong> ${person.failedCount}天</div>
+                    <div><strong>待审核：</strong> ${person.pendingCount}天</div>
+                </div>
+                <div class="cr-list">
+                    <h4>每日提交详情：</h4>
+                    ${person.days.sort((a, b) => a.date - b.date).map(day => `
+                        <div class="cr-item ${day.finalStatus}">
+                            <div class="cr-header">
+                                <span class="cr-date">${day.dateStr}</span>
+                                <span class="cr-status ${day.finalStatus}">
+                                    ${day.finalStatus === 'passed' ? '通过' : 
+                                      day.finalStatus === 'failed' ? '未通过' : '待审核'}
+                                </span>
+                            </div>
+                            ${day.crs.map(cr => `
+                                <div class="cr-url">
+                                    <a href="${cr.url}" target="_blank" rel="noopener noreferrer">${cr.url}</a>
+                                </div>
+                            `).join('')}
+                            <div class="cr-note">
+                                共${day.crs.length}个CR
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+        }
+        
+        function closeModal() {
+            document.getElementById('detailModal').style.display = 'none';
+        }
+        
+        // 点击弹窗外部关闭弹窗
+        window.onclick = function(event) {
+            const modal = document.getElementById('detailModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        function showResults() {
+            document.getElementById('results').classList.remove('hidden');
+        }
+        
+        function clearData() {
+            document.getElementById('crData').value = '';
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('weekSelector').classList.add('hidden');
+            document.getElementById('debugInfo').classList.add('hidden');
+            allCRData = [];
+            currentWeekData = [];
+            debugLogs = [];
+            currentPersonStats = {};
+        }
+        
+        function toggleDebug() {
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.classList.toggle('hidden');
+        }
+        
+        function updateDebugInfo() {
+            document.getElementById('debugContent').innerHTML = debugLogs.join('<br>');
+        }
+    </script>
+</body>
+</html>
